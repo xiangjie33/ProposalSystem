@@ -1,0 +1,34 @@
+.directory-tree .ant-tree-node-content-wrapper {
+  display: inline-flex !important;
+  align-items: center !important;
+  width: calc(100% - 24px) !important;
+  flex: 1 !important;
+}
+
+.directory-tree .ant-tree-title {
+  display: inline-flex !important;
+  align-items: center !important;
+  width: 100% !important;
+  flex: 1 !important;
+}
+
+.directory-tree .ant-tree-treenode {
+  width: 100% !important;
+}
+
+.directory-tree .ant-tree-node-content-wrapper .ant-tree-title > div {
+  width: 100% !important;
+}
+
+.directory-tree .ant-tree-iconEle {
+  display: inline-flex !important;
+  align-items: center !important;
+  margin-right: 4px !important;
+  flex-shrink: 0 !important;
+}
+
+.directory-tree .ant-tree-switcher {
+  display: inline-flex !important;
+  align-items: center !important;
+  flex-shrink: 0 !important;
+}
