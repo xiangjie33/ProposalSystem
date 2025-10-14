@@ -45,6 +45,19 @@ class AuthController extends Controller
             ]);
         }
 
+        // 检查用户状态
+        if ($user->status === 'pending') {
+            return response()->json([
+                'message' => '您的账户正在等待管理员审核'
+            ], 403);
+        }
+
+        if ($user->status === 'inactive') {
+            return response()->json([
+                'message' => '您的账户已被禁用，请联系管理员'
+            ], 403);
+        }
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
@@ -63,5 +76,27 @@ class AuthController extends Controller
     public function me(Request $request)
     {
         return response()->json($request->user()->load('roles'));
+    }
+
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $user = $request->user();
+
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'message' => '当前密码不正确'
+            ], 422);
+        }
+
+        $user->update([
+            'password' => Hash::make($request->password)
+        ]);
+
+        return response()->json(['message' => '密码修改成功']);
     }
 }
