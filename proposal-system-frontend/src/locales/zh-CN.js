@@ -16,6 +16,7 @@ export default {
   menu: {
     fileManagement: '文件管理',
     userManagement: '用户管理',
+    groupManagement: '工作组管理',
     proposalManagement: '提案管理',
   },
   user: {

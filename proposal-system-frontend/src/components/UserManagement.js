@@ -2,16 +2,23 @@ import { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, Select, message, Popconfirm, Space, Tag } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, KeyOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import api from '../services/api';
+import { usePermission } from '../hooks/usePermission';
+import DirectoryTreeSelect from './DirectoryTreeSelect';
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [directories, setDirectories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [form] = Form.useForm();
+  const { isSuperAdmin } = usePermission();
 
   useEffect(() => {
     loadUsers();
+    loadGroups();
+    loadDirectories();
   }, []);
 
   const loadUsers = async () => {
@@ -20,9 +27,30 @@ const UserManagement = () => {
       const response = await api.get('/users');
       setUsers(response.data);
     } catch (error) {
-      message.error('加载用户失败');
+      const errorMsg = error.response?.data?.message || '加载用户失败';
+      message.error(errorMsg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadGroups = async () => {
+    try {
+      const response = await api.get('/groups');
+      setGroups(response.data);
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || '加载工作组失败';
+      message.error(errorMsg);
+    }
+  };
+
+  const loadDirectories = async () => {
+    try {
+      const response = await api.get('/directories/tree');
+      setDirectories(response.data);
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || '加载目录失败';
+      message.error(errorMsg);
     }
   };
 
@@ -37,18 +65,22 @@ const UserManagement = () => {
     form.setFieldsValue({
       name: user.name,
       email: user.email,
-      role: user.roles?.[0]?.name || 'user',
+      role: user.roles?.[0]?.name || 'member',
+      status: user.status || 'active',
+      groups: user.groups?.map(g => g.id) || [],
+      directories: user.directories?.map(d => d.id) || [],
     });
     setModalVisible(true);
   };
 
   const handleDelete = async (id) => {
     try {
-      await api.delete(`/users/${id}`);
-      message.success('删除成功');
+      const response = await api.delete(`/users/${id}`);
+      message.success(response.data.message || '删除成功');
       loadUsers();
     } catch (error) {
-      message.error('删除失败');
+      const errorMsg = error.response?.data?.message || '删除失败';
+      message.error(errorMsg);
     }
   };
 
@@ -60,10 +92,11 @@ const UserManagement = () => {
       cancelText: '取消',
       onOk: async () => {
         try {
-          await api.post(`/users/${user.id}/reset-password`);
-          message.success('密码重置成功，新密码：password123');
+          const response = await api.post(`/users/${user.id}/reset-password`);
+          message.success(response.data.message || '密码重置成功，新密码：password123');
         } catch (error) {
-          message.error('密码重置失败');
+          const errorMsg = error.response?.data?.message || '密码重置失败';
+          message.error(errorMsg);
         }
       },
     });
@@ -71,21 +104,23 @@ const UserManagement = () => {
 
   const handleApprove = async (user) => {
     try {
-      await api.post(`/users/${user.id}/approve`);
-      message.success('用户已审核通过');
+      const response = await api.post(`/users/${user.id}/approve`);
+      message.success(response.data.message || '用户已审核通过');
       loadUsers();
     } catch (error) {
-      message.error('审核失败');
+      const errorMsg = error.response?.data?.message || '审核失败';
+      message.error(errorMsg);
     }
   };
 
   const handleReject = async (user) => {
     try {
-      await api.post(`/users/${user.id}/reject`);
-      message.success('用户已被拒绝');
+      const response = await api.post(`/users/${user.id}/reject`);
+      message.success(response.data.message || '用户已被拒绝');
       loadUsers();
     } catch (error) {
-      message.error('操作失败');
+      const errorMsg = error.response?.data?.message || '操作失败';
+      message.error(errorMsg);
     }
   };
 
@@ -132,11 +167,36 @@ const UserManagement = () => {
       title: '角色',
       dataIndex: 'roles',
       key: 'roles',
-      render: (roles) => (
+      render: (roles) => {
+        const roleMap = {
+          super_admin: { color: 'red', text: '超级管理员' },
+          admin: { color: 'orange', text: '管理员' },
+          senior_member: { color: 'blue', text: '首席会员' },
+          member: { color: 'default', text: '普通会员' },
+        };
+        return (
+          <>
+            {roles?.map(role => {
+              const config = roleMap[role.name] || { color: 'default', text: role.name };
+              return (
+                <Tag color={config.color} key={role.id}>
+                  {config.text}
+                </Tag>
+              );
+            })}
+          </>
+        );
+      },
+    },
+    {
+      title: '工作组',
+      dataIndex: 'groups',
+      key: 'groups',
+      render: (groups) => (
         <>
-          {roles?.map(role => (
-            <Tag color={role.name === 'admin' ? 'red' : 'blue'} key={role.id}>
-              {role.name === 'admin' ? '管理员' : '普通用户'}
+          {groups?.map(group => (
+            <Tag color="cyan" key={group.id}>
+              {group.name}
             </Tag>
           ))}
         </>
@@ -259,7 +319,7 @@ const UserManagement = () => {
             label="姓名"
             rules={[{ required: true, message: '请输入姓名' }]}
           >
-            <Input placeholder="请输入姓名" />
+            <Input placeholder="请输入姓名" disabled={!!editingUser} />
           </Form.Item>
           <Form.Item
             name="email"
@@ -271,16 +331,61 @@ const UserManagement = () => {
           >
             <Input placeholder="请输入邮箱" disabled={!!editingUser} />
           </Form.Item>
+          {editingUser && (
+            <div style={{ color: '#999', fontSize: '12px', marginTop: '-16px', marginBottom: '16px' }}>
+              注：姓名和邮箱不可修改
+            </div>
+          )}
           <Form.Item
             name="role"
             label="角色"
             rules={[{ required: true, message: '请选择角色' }]}
-            initialValue="user"
+            initialValue="member"
           >
             <Select>
-              <Select.Option value="admin">管理员</Select.Option>
-              <Select.Option value="user">普通用户</Select.Option>
+              {isSuperAdmin && <Select.Option value="admin">管理员</Select.Option>}
+              <Select.Option value="senior_member">首席会员</Select.Option>
+              <Select.Option value="member">普通会员</Select.Option>
             </Select>
+          </Form.Item>
+          {editingUser && (
+            <Form.Item
+              name="status"
+              label="账户状态"
+              rules={[{ required: true, message: '请选择账户状态' }]}
+            >
+              <Select>
+                <Select.Option value="active">正常</Select.Option>
+                <Select.Option value="pending">待审核</Select.Option>
+                <Select.Option value="inactive">已禁用</Select.Option>
+              </Select>
+            </Form.Item>
+          )}
+          <Form.Item
+            name="groups"
+            label="工作组"
+          >
+            <Select
+              mode="multiple"
+              placeholder="请选择工作组"
+              allowClear
+            >
+              {groups.map(group => (
+                <Select.Option key={group.id} value={group.id}>
+                  {group.display_name}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <Form.Item
+            name="directories"
+            label="可访问目录"
+            extra="不选择则无法访问任何目录，管理员可访问所有目录"
+          >
+            <DirectoryTreeSelect
+              directories={directories}
+              placeholder="请选择可访问的目录（支持多级选择）"
+            />
           </Form.Item>
           {!editingUser && (
             <div style={{ color: '#999', fontSize: '12px', marginTop: '-8px' }}>

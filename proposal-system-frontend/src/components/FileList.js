@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Table, Button, Upload, message, Popconfirm, Modal, Form, Input, Space } from 'antd';
 import { UploadOutlined, DownloadOutlined, EditOutlined, DeleteOutlined, FileOutlined, FilePdfOutlined, FileWordOutlined, FileExcelOutlined, FileImageOutlined, FileZipOutlined, FileTextOutlined } from '@ant-design/icons';
 import { fileService } from '../services/file';
+import { usePermission } from '../hooks/usePermission';
 
 // 根据文件类型返回对应图标
 const getFileIcon = (fileName, mimeType) => {
@@ -35,6 +36,7 @@ const FileList = ({ directoryId }) => {
   const [editingFile, setEditingFile] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [form] = Form.useForm();
+  const { hasPermission } = usePermission();
 
   useEffect(() => {
     if (directoryId) {
@@ -143,31 +145,37 @@ const FileList = ({ directoryId }) => {
       width: 150,
       render: (_, record) => (
         <Space size="small">
-          <Button 
-            size="small" 
-            icon={<DownloadOutlined />} 
-            onClick={() => handleDownload(record)}
-            title="下载"
-          />
-          <Button 
-            size="small" 
-            icon={<EditOutlined />} 
-            onClick={() => handleEdit(record)}
-            title="重命名"
-          />
-          <Popconfirm 
-            title="确定删除此文件吗？" 
-            onConfirm={() => handleDelete(record.id)}
-            okText="确定"
-            cancelText="取消"
-          >
+          {hasPermission('download-file') && (
             <Button 
               size="small" 
-              icon={<DeleteOutlined />} 
-              danger
-              title="删除"
+              icon={<DownloadOutlined />} 
+              onClick={() => handleDownload(record)}
+              title="下载"
             />
-          </Popconfirm>
+          )}
+          {hasPermission('update-file') && (
+            <Button 
+              size="small" 
+              icon={<EditOutlined />} 
+              onClick={() => handleEdit(record)}
+              title="重命名"
+            />
+          )}
+          {hasPermission('delete-file') && (
+            <Popconfirm 
+              title="确定删除此文件吗？" 
+              onConfirm={() => handleDelete(record.id)}
+              okText="确定"
+              cancelText="取消"
+            >
+              <Button 
+                size="small" 
+                icon={<DeleteOutlined />} 
+                danger
+                title="删除"
+              />
+            </Popconfirm>
+          )}
         </Space>
       ),
     },
@@ -175,17 +183,19 @@ const FileList = ({ directoryId }) => {
 
   return (
     <div>
-      <div style={{ marginBottom: 16 }}>
-        <Upload 
-          beforeUpload={handleUpload} 
-          showUploadList={false}
-          multiple
-        >
-          <Button type="primary" icon={<UploadOutlined />}>
-            上传文件
-          </Button>
-        </Upload>
-      </div>
+      {hasPermission('upload-file') && (
+        <div style={{ marginBottom: 16 }}>
+          <Upload 
+            beforeUpload={handleUpload} 
+            showUploadList={false}
+            multiple
+          >
+            <Button type="primary" icon={<UploadOutlined />}>
+              上传文件
+            </Button>
+          </Upload>
+        </div>
+      )}
       <Table 
         dataSource={files} 
         columns={columns} 

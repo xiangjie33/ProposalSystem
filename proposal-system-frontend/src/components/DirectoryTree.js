@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Tree, Button, Modal, Form, Input, message, Dropdown } from 'antd';
 import { FolderOutlined, FolderOpenOutlined, PlusOutlined, EditOutlined, DeleteOutlined, MoreOutlined } from '@ant-design/icons';
 import { directoryService } from '../services/directory';
+import { usePermission } from '../hooks/usePermission';
 import './DirectoryTree.css';
 
 const DirectoryTree = ({ onSelectDirectory, selectedDirectoryId }) => {
@@ -10,6 +11,7 @@ const DirectoryTree = ({ onSelectDirectory, selectedDirectoryId }) => {
   const [editingDir, setEditingDir] = useState(null);
   const [expandedKeys, setExpandedKeys] = useState([]);
   const [form] = Form.useForm();
+  const { hasPermission } = usePermission();
 
   useEffect(() => {
     loadTree();
@@ -38,80 +40,99 @@ const DirectoryTree = ({ onSelectDirectory, selectedDirectoryId }) => {
     return keys;
   };
 
-  const getMenuItems = (dir) => [
-    {
-      key: 'add',
-      icon: <PlusOutlined />,
-      label: '新建子目录',
-      onClick: () => handleAdd(dir.id),
-    },
-    {
-      key: 'edit',
-      icon: <EditOutlined />,
-      label: '重命名',
-      onClick: () => handleEdit(dir),
-    },
-    {
-      key: 'delete',
-      icon: <DeleteOutlined />,
-      label: '删除',
-      danger: true,
-      onClick: () => {
-        Modal.confirm({
-          title: '确定删除此目录吗？',
-          content: '删除后将无法恢复，且会删除所有子目录和文件',
-          okText: '确定',
-          cancelText: '取消',
-          onOk: () => handleDelete(dir.id),
-        });
-      },
-    },
-  ];
+  const getMenuItems = (dir) => {
+    const items = [];
+    
+    if (hasPermission('create-directory')) {
+      items.push({
+        key: 'add',
+        icon: <PlusOutlined />,
+        label: '新建子目录',
+        onClick: () => handleAdd(dir.id),
+      });
+    }
+    
+    if (hasPermission('update-directory')) {
+      items.push({
+        key: 'edit',
+        icon: <EditOutlined />,
+        label: '重命名',
+        onClick: () => handleEdit(dir),
+      });
+    }
+    
+    if (hasPermission('delete-directory')) {
+      items.push({
+        key: 'delete',
+        icon: <DeleteOutlined />,
+        label: '删除',
+        danger: true,
+        onClick: () => {
+          Modal.confirm({
+            title: '确定删除此目录吗？',
+            content: '删除后将无法恢复，且会删除所有子目录和文件',
+            okText: '确定',
+            cancelText: '取消',
+            onOk: () => handleDelete(dir.id),
+          });
+        },
+      });
+    }
+    
+    return items;
+  };
 
   const formatTreeData = (dirs) => {
-    return dirs.map(dir => ({
-      title: (
-        <div 
-          style={{ 
-            display: 'inline-flex', 
-            alignItems: 'center', 
-            justifyContent: 'space-between',
-            width: 'calc(100% - 24px)',
-          }}
-        >
-          <span 
+    return dirs.map(dir => {
+      const menuItems = getMenuItems(dir);
+      const hasAnyPermission = menuItems.length > 0;
+      
+      return {
+        title: (
+          <div 
             style={{ 
-              flex: 1, 
-              overflow: 'hidden', 
-              textOverflow: 'ellipsis', 
-              whiteSpace: 'nowrap' 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              width: 'calc(100% - 24px)',
             }}
-            title={dir.name}
           >
-            {dir.name}
-          </span>
-          <Dropdown
-            menu={{ items: getMenuItems(dir) }}
-            trigger={['click']}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <MoreOutlined 
+            <span 
               style={{ 
-                padding: '4px 8px',
-                cursor: 'pointer',
-                opacity: 0.6,
-                flexShrink: 0,
+                flex: 1, 
+                overflow: 'hidden', 
+                textOverflow: 'ellipsis', 
+                whiteSpace: 'nowrap' 
               }}
-              onClick={(e) => e.stopPropagation()}
-            />
-          </Dropdown>
-        </div>
-      ),
-      key: dir.id.toString(),
-      children: dir.children && dir.children.length > 0 ? formatTreeData(dir.children) : undefined,
-      data: dir,
-      icon: ({ expanded }) => expanded ? <FolderOpenOutlined style={{ color: '#faad14' }} /> : <FolderOutlined style={{ color: '#faad14' }} />,
-    }));
+              title={dir.name}
+            >
+              {dir.name}
+            </span>
+            {hasAnyPermission && (
+              <Dropdown
+                menu={{ items: menuItems }}
+                trigger={['click']}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreOutlined 
+                  style={{ 
+                    padding: '4px 8px',
+                    cursor: 'pointer',
+                    opacity: 0.6,
+                    flexShrink: 0,
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </Dropdown>
+            )}
+          </div>
+        ),
+        key: dir.id.toString(),
+        children: dir.children && dir.children.length > 0 ? formatTreeData(dir.children) : undefined,
+        data: dir,
+        icon: ({ expanded }) => expanded ? <FolderOpenOutlined style={{ color: '#faad14' }} /> : <FolderOutlined style={{ color: '#faad14' }} />,
+      };
+    });
   };
 
   const handleAdd = (parentId = null) => {
@@ -158,16 +179,18 @@ const DirectoryTree = ({ onSelectDirectory, selectedDirectoryId }) => {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ marginBottom: 16 }}>
-        <Button 
-          type="primary" 
-          icon={<PlusOutlined />} 
-          onClick={() => handleAdd()} 
-          block
-        >
-          新建根目录
-        </Button>
-      </div>
+      {hasPermission('create-directory') && (
+        <div style={{ marginBottom: 16 }}>
+          <Button 
+            type="primary" 
+            icon={<PlusOutlined />} 
+            onClick={() => handleAdd()} 
+            block
+          >
+            新建根目录
+          </Button>
+        </div>
+      )}
       <div style={{ flex: 1, overflow: 'auto' }}>
         <Tree 
           className="directory-tree"

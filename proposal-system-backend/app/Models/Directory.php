@@ -9,7 +9,11 @@ class Directory extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'parent_id', 'created_by', 'path'];
+    protected $fillable = ['name', 'parent_id', 'created_by', 'path', 'is_public'];
+    
+    protected $casts = [
+        'is_public' => 'boolean',
+    ];
 
     public function parent()
     {
@@ -29,5 +33,10 @@ class Directory extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+    
+    public function users()
+    {
+        return $this->belongsToMany(User::class, 'user_directory_permissions');
     }
 }

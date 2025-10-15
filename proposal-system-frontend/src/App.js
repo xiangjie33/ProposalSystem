@@ -8,8 +8,11 @@ import DirectoryTree from './components/DirectoryTree';
 import FileList from './components/FileList';
 import ProposalList from './components/ProposalList';
 import UserManagement from './components/UserManagement';
+import GroupManagement from './components/GroupManagement';
 import ChangePassword from './components/ChangePassword';
+import UserProfile from './components/UserProfile';
 import { authService } from './services/auth';
+import { usePermission } from './hooks/usePermission';
 import { t, setLocale, getLocale } from './locales';
 import './App.css';
 
@@ -26,8 +29,10 @@ function App() {
   });
   const [currentUser, setCurrentUser] = useState(null);
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+  const [profileModalVisible, setProfileModalVisible] = useState(false);
   const [locale, setLocaleState] = useState(getLocale());
   const [, forceUpdate] = useState();
+  const { hasPermission, isAdmin } = usePermission();
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -66,7 +71,7 @@ function App() {
     } else if (key === 'logout') {
       handleLogout();
     } else if (key === 'profile') {
-      message.info('个人信息功能开发中...');
+      setProfileModalVisible(true);
     }
   };
 
@@ -147,7 +152,10 @@ function App() {
               style={{ height: '100%', borderRight: 0 }}
               items={[
                 { key: 'files', icon: <FileOutlined />, label: t('menu.fileManagement') },
-                { key: 'users', icon: <TeamOutlined />, label: '用户管理' },
+                ...(isAdmin ? [
+                  { key: 'users', icon: <UserOutlined />, label: t('menu.userManagement') },
+                  { key: 'groups', icon: <TeamOutlined />, label: t('menu.groupManagement') },
+                ] : []),
                 { key: 'proposals', icon: <FormOutlined />, label: t('menu.proposalManagement') },
               ]}
             />
@@ -211,6 +219,11 @@ function App() {
                   <UserManagement />
                 </div>
               )}
+              {currentView === 'groups' && (
+                <div style={{ padding: '16px', background: '#fff', height: '100%', overflow: 'auto' }}>
+                  <GroupManagement />
+                </div>
+              )}
               {currentView === 'proposals' && (
                 <div style={{ padding: '16px', background: '#fff', height: '100%', overflow: 'auto' }}>
                   <ProposalList />
@@ -224,6 +237,16 @@ function App() {
         visible={passwordModalVisible}
         onCancel={() => setPasswordModalVisible(false)}
         onSuccess={() => setPasswordModalVisible(false)}
+      />
+      <UserProfile
+        visible={profileModalVisible}
+        onCancel={() => setProfileModalVisible(false)}
+        onSuccess={() => {
+          setProfileModalVisible(false);
+          // 重新加载用户信息
+          const user = authService.getCurrentUser();
+          setCurrentUser(user);
+        }}
       />
     </ConfigProvider>
   );

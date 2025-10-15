@@ -63,7 +63,8 @@ class AuthController extends Controller
         return response()->json([
             'access_token' => $token,
             'token_type' => 'Bearer',
-            'user' => $user->load('roles')
+            'user' => $user->load(['roles', 'groups']),
+            'permissions' => $user->getAllPermissions()->pluck('name'),
         ]);
     }
 
@@ -75,7 +76,11 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
-        return response()->json($request->user()->load('roles'));
+        $user = $request->user()->load(['roles', 'groups']);
+        return response()->json([
+            'user' => $user,
+            'permissions' => $user->getAllPermissions()->pluck('name'),
+        ]);
     }
 
     public function changePassword(Request $request)

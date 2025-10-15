@@ -16,6 +16,7 @@ export default {
   menu: {
     fileManagement: 'File Management',
     userManagement: 'User Management',
+    groupManagement: 'Group Management',
     proposalManagement: 'Proposal Management',
   },
   user: {

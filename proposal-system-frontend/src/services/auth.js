@@ -6,6 +6,7 @@ export const authService = {
     if (response.data.access_token) {
       localStorage.setItem('token', response.data.access_token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
+      localStorage.setItem('permissions', JSON.stringify(response.data.permissions || []));
     }
     return response.data;
   },

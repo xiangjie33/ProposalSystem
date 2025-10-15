@@ -21,6 +21,11 @@ class FileController extends Controller
 
     public function store(Request $request)
     {
+        // 检查上传文件权限
+        if (!auth()->user()->can('upload-file')) {
+            return response()->json(['message' => '无权上传文件'], 403);
+        }
+
         $request->validate([
             'file' => 'required|file|max:102400', // 100MB
             'directory_id' => 'required|exists:directories,id',
@@ -50,6 +55,11 @@ class FileController extends Controller
 
     public function update(Request $request, File $file)
     {
+        // 检查修改文件权限
+        if (!auth()->user()->can('update-file')) {
+            return response()->json(['message' => '无权修改文件'], 403);
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
         ]);
@@ -61,6 +71,11 @@ class FileController extends Controller
 
     public function destroy(File $file)
     {
+        // 检查删除文件权限
+        if (!auth()->user()->can('delete-file')) {
+            return response()->json(['message' => '无权删除文件'], 403);
+        }
+
         Storage::disk('public')->delete($file->file_path);
         $file->delete();
         
@@ -69,6 +84,11 @@ class FileController extends Controller
 
     public function download(File $file)
     {
+        // 检查下载文件权限
+        if (!auth()->user()->can('download-file')) {
+            return response()->json(['message' => '无权下载文件'], 403);
+        }
+
         return Storage::disk('public')->download($file->file_path, $file->original_name);
     }
 }
